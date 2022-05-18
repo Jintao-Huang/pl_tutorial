@@ -1,7 +1,12 @@
 # Author: Jintao Huang
 # Email: hjt_study@qq.com
-# Date: 
+# Date:
 
+import warnings
+from tqdm import tqdm
+from torchvision.datasets import FashionMNIST
+from torchvision import transforms
+import torchvision
 import json
 import math
 import os
@@ -23,7 +28,8 @@ import torch.utils.data as data
 
 # [Setup]
 DATASET_PATH = os.environ.get("PATH_DATASETS", "data/")
-CHECKPOINT_PATH = os.environ.get("PATH_CHECKPOINT", "saved_models/Activation_Functions/")
+CHECKPOINT_PATH = os.environ.get(
+    "PATH_CHECKPOINT", "saved_models/Activation_Functions/")
 
 
 def set_seed(seed):
@@ -39,7 +45,8 @@ set_seed(42)
 torch.backends.cudnn.determinstic = True
 torch.backends.cudnn.benchmark = False
 
-device = torch.device("cpu") if not torch.cuda.is_available() else torch.device("cuda:0")
+device = torch.device(
+    "cpu") if not torch.cuda.is_available() else torch.device("cuda:0")
 print("Using device", device)
 base_url = "https://raw.githubusercontent.com/phlippe/saved_models/main/tutorial3/"
 pretrained_files = [
@@ -116,7 +123,8 @@ class Swish(ActivationFunction):
         return x * torch.sigmoid(x)
 
 
-act_fn_by_name = {"sigmoid": Sigmoid, "tanh": Tanh, "relu": ReLU, "leakyrelu": LeakyReLU, "elu": ELU, "swish": Swish}
+act_fn_by_name = {"sigmoid": Sigmoid, "tanh": Tanh, "relu": ReLU,
+                  "leakyrelu": LeakyReLU, "elu": ELU, "swish": Swish}
 
 
 # [Visualizing activation functions]
@@ -150,12 +158,6 @@ plt.show()
 
 # [Analysing the effect of activation functions]
 
-import torchvision
-
-from torchvision import transforms
-from torchvision.datasets import FashionMNIST
-from tqdm import tqdm
-
 
 # [Setup]
 class BaseNetwork(nn.Module):
@@ -165,7 +167,8 @@ class BaseNetwork(nn.Module):
         layers = []
         layer_sizes = [input_size] + hidden_sizes
         for layer_index in range(1, len(layer_sizes)):
-            layers += [nn.Linear(layer_sizes[layer_index - 1], layer_sizes[layer_index]), act_fn]
+            layers += [nn.Linear(layer_sizes[layer_index - 1],
+                                 layer_sizes[layer_index]), act_fn]
         layers += [nn.Linear(layer_sizes[-1], num_classes)]
         self.layers = nn.Sequential(*layers)
 
@@ -191,7 +194,8 @@ def _get_model_file(model_path, model_name):
 
 
 def load_model(model_path, model_name, net=None):
-    config_file, model_file = _get_config_file(model_path, model_name), _get_model_file(model_path, model_name)
+    config_file, model_file = _get_config_file(
+        model_path, model_name), _get_model_file(model_path, model_name)
     assert os.path.isfile(
         config_file
     ), f'Could not find the config file "{config_file}". Are you sure this is the correct path and you have your model config stored here?'
@@ -211,25 +215,35 @@ def load_model(model_path, model_name, net=None):
 def save_model(model, model_path, model_name):
     config_dict = model.config
     os.makedirs(model_path, exist_ok=True)
-    config_file, model_file = _get_config_file(model_path, model_name), _get_model_file(model_path, model_name)
+    config_file, model_file = _get_config_file(
+        model_path, model_name), _get_model_file(model_path, model_name)
     with open(config_file, "w") as f:
         json.dump(config_dict, f)
     torch.save(model.state_dict(), model_file)
 
+
 #
-transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])
+transform = transforms.Compose(
+    [transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])
 
-train_dataset = FashionMNIST(root=DATASET_PATH, train=True, transform=transform, download=True)
-train_set, val_set = torch.utils.data.random_split(train_dataset, [50000, 10000])
+train_dataset = FashionMNIST(
+    root=DATASET_PATH, train=True, transform=transform, download=True)
+train_set, val_set = torch.utils.data.random_split(
+    train_dataset, [50000, 10000])
 
-test_set = FashionMNIST(root=DATASET_PATH, train=False, transform=transform, download=True)
+test_set = FashionMNIST(root=DATASET_PATH, train=False,
+                        transform=transform, download=True)
 
-train_loader = data.DataLoader(train_set, batch_size=1024, shuffle=True, drop_last=False)
-val_loader = data.DataLoader(val_set, batch_size=1024, shuffle=False, drop_last=False)
-test_loader = data.DataLoader(test_set, batch_size=1024, shuffle=False, drop_last=False)
+train_loader = data.DataLoader(
+    train_set, batch_size=1024, shuffle=True, drop_last=False)
+val_loader = data.DataLoader(
+    val_set, batch_size=1024, shuffle=False, drop_last=False)
+test_loader = data.DataLoader(
+    test_set, batch_size=1024, shuffle=False, drop_last=False)
 
 exmp_imgs = [train_set[i][0] for i in range(16)]
-img_grid = torchvision.utils.make_grid(torch.stack(exmp_imgs, dim=0), nrow=4, normalize=True, pad_value=0.5)
+img_grid = torchvision.utils.make_grid(torch.stack(
+    exmp_imgs, dim=0), nrow=4, normalize=True, pad_value=0.5)
 img_grid = img_grid.permute(1, 2, 0)
 
 plt.figure(figsize=(8, 8))
@@ -263,7 +277,8 @@ def visualize_gradients(net, color="C0"):
     fig_index = 0
     for key in grads.keys():
         key_ax = ax[fig_index]
-        sns.histplot(data=grads[key], bins=30, ax=key_ax, color=color, kde=True)
+        sns.histplot(data=grads[key], bins=30,
+                     ax=key_ax, color=color, kde=True)
         key_ax.set_title(str(key))
         key_ax.set_xlabel("Grad magnitude")
         fig_index += 1
@@ -274,7 +289,7 @@ def visualize_gradients(net, color="C0"):
     plt.show()
     plt.close()
 
-import warnings
+
 warnings.filterwarnings("ignore")
 for i, act_fn_name in enumerate(act_fn_by_name):
     set_seed(42)
@@ -283,6 +298,8 @@ for i, act_fn_name in enumerate(act_fn_by_name):
     visualize_gradients(net_actfn, color=f"C{i}")
 
 # [Training a model]
+
+
 def train_model(net, model_name, max_epochs=50, patience=7, batch_size=256, overwrite=False):
 
     file_exists = os.path.isfile(_get_model_file(CHECKPOINT_PATH, model_name))
@@ -326,7 +343,8 @@ def train_model(net, model_name, max_epochs=50, patience=7, batch_size=256, over
                 save_model(net, CHECKPOINT_PATH, model_name)
                 best_val_epoch = epoch
             elif best_val_epoch <= epoch - patience:
-                print(f"Early stopping due to no improvement over the last {patience} epochs")
+                print(
+                    f"Early stopping due to no improvement over the last {patience} epochs")
                 break
 
         #
@@ -356,14 +374,19 @@ def test_model(net, data_loader):
     test_acc = true_preds / count
     return test_acc
 
+
 for act_fn_name in act_fn_by_name:
     print(f"Training BaseNetwork with {act_fn_name} activation...")
     set_seed(42)
     act_fn = act_fn_by_name[act_fn_name]()
     net_actfn = BaseNetwork(act_fn=act_fn).to(device)
-    train_model(net_actfn, f"FashionMNIST_{act_fn_name}", max_epochs=2, overwrite=True)
+    train_model(net_actfn, f"FashionMNIST_{act_fn_name}",
+                max_epochs=2,  # 默认没有
+                overwrite=True)
 
 # [Visualizing the activation distribution]
+
+
 def visualize_activations(net, color="C0"):
     activations = {}
 
@@ -384,19 +407,25 @@ def visualize_activations(net, color="C0"):
     fig, ax = plt.subplots(rows, columns, figsize=(columns * 2.7, rows * 2.5))
     for fig_index, key in enumerate(activations):
         key_ax = ax[divmod(fig_index, columns)]
-        sns.histplot(data=activations[key], bins=50, ax=key_ax, color=color, kde=True, stat="density")
+        sns.histplot(data=activations[key], bins=50,
+                     ax=key_ax, color=color, kde=True, stat="density")
         key_ax.set_title(f"Layer {key} - {net.layers[key].__class__.__name__}")
 
-    fig.suptitle(f"Activation distribution for activation function {net.config['act_fn']['name']}", fontsize=14)
+    fig.suptitle(
+        f"Activation distribution for activation function {net.config['act_fn']['name']}", fontsize=14)
     fig.subplots_adjust(hspace=0.4, wspace=0.4)
     plt.show()
     plt.close()
 
+
 for i, act_fn_name in enumerate(act_fn_by_name):
-    net_actfn = load_model(model_path=CHECKPOINT_PATH, model_name=f"FashionMNIST_{act_fn_name}").to(device)
+    net_actfn = load_model(model_path=CHECKPOINT_PATH,
+                           model_name=f"FashionMNIST_{act_fn_name}").to(device)
     visualize_activations(net_actfn, color=f"C{i}")
 
 # [Finding dead neurons in ReLU networks]
+
+
 @torch.no_grad()
 def measure_number_dead_neurons(net):
     neurons_dead = [
@@ -413,22 +442,26 @@ def measure_number_dead_neurons(net):
         for layer in net.layers[:-1]:
             imgs = layer(imgs)
             if isinstance(layer, ActivationFunction):
-                neurons_dead[layer_index] = torch.logical_and(neurons_dead[layer_index], (imgs == 0).all(dim=0))
+                neurons_dead[layer_index] = torch.logical_and(
+                    neurons_dead[layer_index], (imgs == 0).all(dim=0))
                 layer_index += 1
     number_neurons_dead = [t.sum().item() for t in neurons_dead]
     print("Number of dead neurons:", number_neurons_dead)
     print(
         "In percentage:",
         ", ".join(
-            [f"{(100 * num_dead / tens.shape[0]):4.2f}%" for tens, num_dead in zip(neurons_dead, number_neurons_dead)]
+            [f"{(100 * num_dead / tens.shape[0]):4.2f}%" for tens,
+             num_dead in zip(neurons_dead, number_neurons_dead)]
         )
     )
+
 
 set_seed(42)
 net_relu = BaseNetwork(act_fn=ReLU()).to(device)
 measure_number_dead_neurons(net_relu)
 
-net_relu = load_model(model_path=CHECKPOINT_PATH, model_name="FashionMNIST_relu").to(device)
+net_relu = load_model(model_path=CHECKPOINT_PATH,
+                      model_name="FashionMNIST_relu").to(device)
 measure_number_dead_neurons(net_relu)
 
 set_seed(42)
