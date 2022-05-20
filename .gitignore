@@ -4,3 +4,6 @@
 /.vscode/
 test.py
 1.png
+test2.py
+test_resnet.py
+requirements.txt

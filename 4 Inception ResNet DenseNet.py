@@ -126,11 +126,11 @@ orig_images = [test_transform(img) for img in orig_images]
 
 img_grid = torchvision.utils.make_grid(torch.stack(
     images + orig_images, dim=0), nrow=4, normalize=True, pad_value=0.5)
-img_grid = img_grid.permute(1, 2, 0)
+img_grid = img_grid.permute(1, 2, 0).numpy()
 # img_grid = (img_grid * 255).to(torch.uint8)
 plt.figure(figsize=(8, 8))
 plt.title("Augmentation examples on CIFAR10")
-plt.imshow(img_grid.numpy())
+plt.imshow(img_grid)
 plt.axis("off")
 plt.show()
 plt.close()
@@ -252,8 +252,9 @@ def train_model(model_name, model_hparams, optimizer_name, optimizer_hparams, sa
         )
 
     #
-    val_result = trainer.test(model, dataloaders=val_loader, verbose=False)
+    val_result = trainer.test(model, dataloaders=val_loader, verbose=False)  # 每次运行都不一样, 因为transforms
     test_result = trainer.test(model, dataloaders=test_loader, verbose=False)
+
     result = {"test": test_result[0]["test_acc"],
               "val": val_result[0]["test_acc"]}
 

@@ -244,7 +244,7 @@ test_loader = data.DataLoader(
 exmp_imgs = [train_set[i][0] for i in range(16)]
 img_grid = torchvision.utils.make_grid(torch.stack(
     exmp_imgs, dim=0), nrow=4, normalize=True, pad_value=0.5)
-img_grid = img_grid.permute(1, 2, 0)
+img_grid = img_grid.permute(1, 2, 0).numpy()
 
 plt.figure(figsize=(8, 8))
 plt.title("FashionMNIST examples")
