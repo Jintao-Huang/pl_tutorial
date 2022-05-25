@@ -1,6 +1,6 @@
 # Author: Jintao Huang
 # Email: hjt_study@qq.com
-# Date: 
+# Date:
 
 # [Setup]
 
@@ -164,7 +164,7 @@ class EncoderBlock(nn.Module):
         self.self_attn = MultiheadAttention(input_dim, input_dim, num_heads)
         self.linear_net = nn.Sequential(
             nn.Linear(input_dim, dim_feedforward),
-            nn.Dropout(dropout),
+            nn.Dropout(dropout),  # ReLU的Dropout前后都能放, 其他一般放后面
             nn.ReLU(inplace=True),
             nn.Linear(dim_feedforward, input_dim),
         )
@@ -465,7 +465,7 @@ def train_reverse(**kwargs):
         gpus=1 if str(device).startswith("cuda") else 0,
         max_epochs=10,
         gradient_clip_val=5,  # gradient_clip_algorithm='norm', 不改变梯度方向. 0.5-10之间
-        log_every_n_steps = 10
+        log_every_n_steps=10
         # progress_bar_refresh_rate=1,
     )
     # Optional logging argument that we don't need
@@ -580,7 +580,7 @@ pretrained_model = pretrained_model.to(device)
 
 #
 pretrained_model.eval()
-# freeze. 用no_grad是不够的
+# freeze. 用no_grad是不行的
 for p in pretrained_model.parameters():
     p.requires_grad = False
 #
@@ -632,7 +632,7 @@ val_feats, val_labels = train_set_feats[val_indices], labels[val_indices]
 
 class SetAnomalyDataset(data.Dataset):
     def __init__(self, img_feats, labels, set_size=10, train=True):
-        super().__init__()
+        super(SetAnomalyDataset, self).__init__()
         self.img_feats = img_feats  # [num_imgs, img_dim]
         self.labels = labels  # [num_imgs]
         self.set_size = set_size - 1
@@ -702,13 +702,17 @@ val_anom_loader = data.DataLoader(
     val_anom_dataset, batch_size=64, shuffle=False, drop_last=False, num_workers=4, pin_memory=True)
 test_anom_loader = data.DataLoader(
     test_anom_dataset, batch_size=64, shuffle=False, drop_last=False, num_workers=4, pin_memory=True)
-# 
+#
+
+
 def visualize_exmp(indices, orig_dataset):
-    images = [orig_dataset[idx][0] for idx in indices.reshape(-1)]  # 0: images, 1: labels
+    images = [orig_dataset[idx][0]
+              for idx in indices.reshape(-1)]  # 0: images, 1: labels
     images = torch.stack(images, dim=0)
     images = images * TORCH_DATA_STD + TORCH_DATA_MEANS
     # 这里的nrow与plt.subplots的ncols含义相同
-    img_grid = torchvision.utils.make_grid(images, nrow=SET_SIZE, normalize=True, pad_value=0.5, padding=16)
+    img_grid = torchvision.utils.make_grid(
+        images, nrow=SET_SIZE, normalize=True, pad_value=0.5, padding=16)
     img_grid = img_grid.permute(1, 2, 0).numpy()
 
     plt.figure(figsize=(12, 8))
@@ -719,14 +723,15 @@ def visualize_exmp(indices, orig_dataset):
     plt.close()
 
 
-
 _, indices, _ = next(iter(test_anom_loader))
 visualize_exmp(indices[:4], test_set)  # [4, 10], [N, H, W, C]
-# 
+#
+
+
 class AnomalyPredictor(TransformerPredictor):
     def _calculate_loss(self, batch, mode="train"):
         img_sets, _, labels = batch
-        # 
+        #
         preds = self.forward(img_sets, add_positional_encoding=False)
         preds = preds.squeeze(dim=-1)  # Shape: [Batch_size, set_size]
         # labels: [Batch_size]
@@ -746,37 +751,45 @@ class AnomalyPredictor(TransformerPredictor):
     def test_step(self, batch, batch_idx):
         _ = self._calculate_loss(batch, mode="test")
 
-# 
+#
+
 
 def train_anomaly(**kwargs):
-    # 
+    #
     root_dir = os.path.join(CHECKPOINT_PATH, "SetAnomalyTask")
     os.makedirs(root_dir, exist_ok=True)
     trainer = pl.Trainer(
         default_root_dir=root_dir,
-        callbacks=[ModelCheckpoint(save_weights_only=True, mode="max", monitor="val_acc")],
+        callbacks=[ModelCheckpoint(
+            save_weights_only=True, mode="max", monitor="val_acc")],
         gpus=1 if str(device).startswith("cuda") else 0,
         max_epochs=100,
         gradient_clip_val=2,
         log_every_n_steps=10
         # progress_bar_refresh_rate=1,
     )
-    trainer.logger._default_hp_metric = False  # Optional logging argument that we don't need
+    # Optional logging argument that we don't need
+    trainer.logger._default_hp_metric = False
 
-    # 
+    #
     pretrained_filename = os.path.join(CHECKPOINT_PATH, "SetAnomalyTask.ckpt")
     if os.path.isfile(pretrained_filename):
         print("Found pretrained model, loading...")
         model = AnomalyPredictor.load_from_checkpoint(pretrained_filename)
     else:
-        model = AnomalyPredictor(max_iters=trainer.max_epochs * len(train_anom_loader), **kwargs)
+        model = AnomalyPredictor(
+            max_iters=trainer.max_epochs * len(train_anom_loader), **kwargs)
         trainer.fit(model, train_anom_loader, val_anom_loader)
-        model = AnomalyPredictor.load_from_checkpoint(trainer.checkpoint_callback.best_model_path)
+        model = AnomalyPredictor.load_from_checkpoint(
+            trainer.checkpoint_callback.best_model_path)
 
-    # 
-    train_result = trainer.test(model, dataloaders=train_anom_loader, verbose=False)
-    val_result = trainer.test(model, dataloaders=val_anom_loader, verbose=False)
-    test_result = trainer.test(model, dataloaders=test_anom_loader, verbose=False)
+    #
+    train_result = trainer.test(
+        model, dataloaders=train_anom_loader, verbose=False)
+    val_result = trainer.test(
+        model, dataloaders=val_anom_loader, verbose=False)
+    test_result = trainer.test(
+        model, dataloaders=test_anom_loader, verbose=False)
     result = {
         "test_acc": test_result[0]["test_acc"],
         "val_acc": val_result[0]["test_acc"],
@@ -802,7 +815,7 @@ print("Train accuracy: %4.2f%%" % (100. * anomaly_result["train_acc"]))
 print("Val accuracy:   %4.2f%%" % (100. * anomaly_result["val_acc"]))
 print("Test accuracy:  %4.2f%%" % (100. * anomaly_result["test_acc"]))
 
-# 
+#
 inp_data, indices, labels = next(iter(test_anom_loader))
 inp_data = inp_data.to(device)
 
@@ -812,29 +825,33 @@ with torch.no_grad():
     preds = anomaly_model.forward(inp_data, add_positional_encoding=False)
     preds = F.softmax(preds.squeeze(dim=-1), dim=-1)
 
-    # 
+    #
     permut = np.random.permutation(inp_data.shape[1])
     perm_inp_data = inp_data[:, permut]
-    perm_preds = anomaly_model.forward(perm_inp_data, add_positional_encoding=False)
+    perm_preds = anomaly_model.forward(
+        perm_inp_data, add_positional_encoding=False)
     perm_preds = F.softmax(perm_preds.squeeze(dim=-1), dim=-1)
 
-assert (preds[:, permut] - perm_preds).abs().max() < 1e-3, "Predictions are not permutation equivariant"
+assert (preds[:, permut] -
+        perm_preds).abs().max() < 1e-3, "Predictions are not permutation equivariant"
 
 print("Preds\n", preds[0, permut].cpu().numpy())
 print("Permuted preds\n", perm_preds[0].cpu().numpy())
-# 
-attention_maps = anomaly_model.get_attention_maps(inp_data, add_positional_encoding=False)
+#
+attention_maps = anomaly_model.get_attention_maps(
+    inp_data, add_positional_encoding=False)
 predictions = preds.argmax(dim=-1)
+
 
 def visualize_prediction(idx):
     # indices, test_set, predictions, attention_maps
-    visualize_exmp(indices[idx : idx + 1], test_set)
+    visualize_exmp(indices[idx: idx + 1], test_set)
     print("Prediction:", predictions[idx].item())
     plot_attention_maps(input_data=None, attn_maps=attention_maps, idx=idx)
 
 
 visualize_prediction(0)
-# 
+#
 mistakes = torch.where(predictions != 9)[0].cpu().numpy()
 print("Indices with mistake:", mistakes)
 

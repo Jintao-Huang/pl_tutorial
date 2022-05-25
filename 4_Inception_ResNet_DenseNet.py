@@ -252,7 +252,8 @@ def train_model(model_name, model_hparams, optimizer_name, optimizer_hparams, sa
         )
 
     #
-    val_result = trainer.test(model, dataloaders=val_loader, verbose=False)  # 每次运行都不一样, 因为transforms
+    # 每次运行都不一样, 因为transforms
+    val_result = trainer.test(model, dataloaders=val_loader, verbose=False)
     test_result = trainer.test(model, dataloaders=test_loader, verbose=False)
 
     result = {"test": test_result[0]["test_acc"],
@@ -756,7 +757,7 @@ table = [
 ]
 
 
-## %%html
+# %%html
 # <!-- Some HTML code to increase font size in the following table -->
 # <style>
 # th {font-size: 120%;}

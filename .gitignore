@@ -2,8 +2,10 @@
 /runs/
 /saved_models/
 /.vscode/
-test.py
-1.png
-test2.py
-test_resnet.py
-requirements.txt
+/test.py
+/1.png
+/test2.py
+/test_resnet.py
+/requirements.txt
+/test_resnet2.py
+/test_index_select.py
