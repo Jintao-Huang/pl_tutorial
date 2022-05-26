@@ -2,10 +2,7 @@
 /runs/
 /saved_models/
 /.vscode/
-/test.py
-/1.png
-/test2.py
-/test_resnet.py
+/*.png
+/test/
 /requirements.txt
-/test_resnet2.py
-/test_index_select.py
+lightning_logs
